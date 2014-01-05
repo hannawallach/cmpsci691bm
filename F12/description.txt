@@ -1,0 +1,13 @@
+This course will provide an overview of the key ideas that underlie
+the Bayesian approach to modeling data, with a particular focus on
+text. The course will primarily consist of discussing, deriving, and
+implementing a number of Bayesian models of text (and their associated
+inference algorithms) in order to understand their fundamental
+strengths and weaknesses, as well as explore the relationships between
+them. The aim of the course is to develop the knowledge and skills
+needed to design, implement, and apply such models to real-world
+data. Students entering the course should have good programming
+skills, knowledge of algorithms, knowledge of probability, statistics,
+or machine learning, and a strong interest in text analysis. To
+facilitate productive discussion, students with diverse research
+backgrounds and interests are especially encouraged to participate.
