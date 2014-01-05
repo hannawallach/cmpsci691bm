@@ -1,0 +1,164 @@
+* Overview
+
+This homework is about working with a mixture of
+Dirichlet--multinomial unigram language models in order to infer
+document groups. The purpose of this homework is twofold:
+
+ * To understand and implement Gibbs sampling for a mixture of
+   Dirichlet--multinomial unigram language models.
+
+ * To appreciate the effects and implications of "label switching".
+
+To complete this homework, you will need to use Python 2.7 [1], NumPy
+[2], and SciPy [3]. Although all three are installed on EdLab, I
+recommend you install them on your own computer. I also recommend you
+install and use IPython [4] instead of the default Python shell.
+
+Before answering the questions below, you should familiarize yourself
+with the code in hw5.py. In particular, you should try running
+sample(). For example, running 'sample(array([5, 2, 3]), 10)'
+generates 10 samples from the specified distribution as follows:
+
+>>> sample(array([5, 2, 3]), 10)
+array([0, 0, 2, 2, 1, 0, 0, 0, 2, 1])
+
+
+* Questions
+
+** Question 1
+
+Class Corpus (in corpus.py) implements a corpus of (ungrouped)
+documents. You can run this code as follows:
+
+>>> corpus = Corpus()
+>>> corpus.add('doc 1', ['foo', 'bar'])
+>>> corpus.add('doc 2', ['bar', 'baz', 'baz'])
+>>> corpus.add('doc 3', ['bar', 'foo'])
+>>> print len(corpus)
+3
+>>> print sum(len(doc) for doc in corpus)
+7
+>>> print len(corpus.vocab)
+3
+>>> for doc in corpus:
+...     print doc.w
+...
+[0, 1]
+[1, 2, 2]
+[1, 0]
+>>> for doc in corpus:
+...     print '%s: %s' % (doc.name, doc.plaintext())
+...
+doc 1: foo bar
+doc 2: bar baz baz
+doc 3: bar foo
+>>> for doc in corpus:
+...     print doc.Nv
+...
+None
+None
+None
+>>> corpus.freeze()
+>>> for doc in corpus:
+...     print doc.Nv
+...
+[1 1 0]
+[0 1 2]
+[1 1 0]
+
+(Note: although you do not need to understand how this class is
+implemented, you may find it helpful to do so.)
+
+CSV file questions.csv contains 5,264 questions about science from the
+Madsci Network question-and-answer website [5]. Each question is
+represented by a unique ID, and the text of the question itself.
+
+Function preprocess() (in preprocess.py) takes a CSV file, an optional
+stopword file, and an optional list of extra stopwords as input and
+returns a corpus (i.e., an instance of the Corpus class, as described
+above), with any stopwords removed. You can run this code as follows:
+
+>>> corpus = preprocess('questions.csv', 'stopwordlist.txt', ['answer', 'dont', 'find', 'im', 'information', 'ive', 'message', 'question', 'read', 'science', 'wondering'])
+>>> print 'V = %s' % len(corpus.vocab)
+V = 21919
+
+Class MixtureModel (in hw5.py) implements a mixture of
+Dirichlet--multinomial unigram language models.
+
+ a) Implement code for performing a single Gibbs sampling iteration,
+    i.e., drawing a single set of document--component assignments z_1
+    through z_D from P(z_1, ..., z_D | w_1, ..., w_N, H), by filling
+    in the missing code in gibbs_iteration(). You should work in log
+    space, i.e., use log_sample() rather than sample(). For efficiency
+    reasons, your code should not use any for loops when constructing
+    the unnormalized log distribution over components for each
+    document; instead you should use numpy's tile() function. You may,
+    however, wish to initially implement your code using for loops so
+    that you can check that your code is correct (i.e., constructs the
+    same distribution with and without for loops). If so, you may find
+    it useful to initialize the random number generator with a fixed
+    seed when checking your code. You can run your code as follows:
+
+>>> corpus = preprocess('questions.csv', 'stopwordlist.txt', ['answer', 'dont', 'find', 'im', 'information', 'ive', 'message', 'question', 'read', 'science', 'wondering'])
+>>> V = len(corpus.vocab)
+>>> T = 10
+>>> alpha = 0.1 * T
+>>> m = ones(T) / T
+>>> beta = 0.01 * V
+>>> n = ones(V) / V
+>>> mm = MixtureModel(corpus, alpha, m, beta, n)
+>>> mm.gibbs(num_itns=25)
+
+ b) If the random number generator is initialized with a value of 1000
+    as follows, what is the log evidence for tokens w_1 through w_N
+    and document--component assignments z_1 through z_D given
+    assumptions H at the end of iteration 25?
+
+>>> mm.gibbs(num_itns=25, random_seed=1000)
+
+ c) If you run your code multiple times, WITHOUT initializing the
+    random number generator to a fixed value (as in question 1a), are
+    the component indices aligned across runs? In other words, is the
+    list of the most probable word types associated with component 1
+    in one run associated with component 1 in the other runs?
+
+
+* Question 2
+
+According to a mixture of Dirichlet--multinomial unigram language
+models, the mean of the posterior distribution over phi_t (the
+categorical distribution over word types corresponding to model
+component t) given the observed data w_1 through w_N and assumptions
+H, i.e., the mean of P(phi_t | w_1, ..., w_N, H), is given by
+
+E[phi_t] = int_{phi_t} dphi_t phi_t * P(phi_t | w_1, ..., w_N, H),
+
+where P(phi_t | w_1, ..., w_N, H) = sum_{z_1, ..., z_D} P(phi_t | w_1,
+..., w_N, z_1, ..., z_D, H) * P(z_1, ..., z_D | w_1, ..., w_N, H)
+
+ a) Can this value be computed analytically?
+
+ b) Function posterior_mean_phis() approximates the mean of the
+    posterior distribution over phi_t by the mean of the posterior
+    distribution over phi_t given a single set of document--component
+    assignments z_1^{(s)} through z_D^{(s)} drawn from P(z_1, ..., z_D
+    | w_1, ..., w_N, H), i.e., the mean of P(phi_t | w_1, ..., w_N,
+    z_1^{(s)}, ..., z_D^{(s)}). Would you obtain a better
+    approximation by averaging P(phi_t | w_1, ..., w_N, z_1^{(s)},
+    ..., z_D^{(s)}) over MULTIPLE samples from P(z_1, ..., z_D | w_1,
+    ..., w_N, H), obtained from different runs of your code?
+
+ c) How does your answer relate to your answer to question 1c?
+
+
+* References
+
+[1] http://www.python.org/
+
+[2] http://numpy.scipy.org/
+
+[3] http://www.scipy.org/
+
+[4] http://ipython.org/
+
+[5] http://research.madsci.org/dataset/

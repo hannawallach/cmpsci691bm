@@ -1,0 +1,112 @@
+* Questions
+
+** Question 1
+
+Answers:
+
+ a) Draw a large number of samples, use these samples to compute the
+    empirical distribution, compare the empirical and true
+    distributions by, for example, computing the relative error for
+    each element and then averaging these errors over all elements.
+
+ b) See hw1_answers.py.
+
+
+** Question 2
+
+Answers:
+
+ a) See hw1_answers.py.
+
+ b) See hw1_answers.py.
+
+ c) See hw1_answers.py.
+
+ d) See hw1_answers.py.
+
+
+** Question 3
+
+Answers:
+
+ a) Seeding the random number generator with a fixed value ensures
+    that each function uses the same sequence of uniform random
+    variates and hence generates the same sequence of random samples.
+
+ b) Run time is affected by external factors. Averaging over
+    repetitions reduces the effect of these factors.
+
+ c) See plot_by_dimension.png
+
+ d) Function sample_1() is over twice as fast as sample_2().
+
+ e) Function sample_3() is over twice as fast as sample_1().
+
+ f) Function sample_4() is around seven times as fast as sample_3().
+
+ g) Function sample_4() is around seven times as fast as sample_3().
+
+ h) There is very little change in the time taken by sample_4() as the
+    dimensionality is increased from 2 to 1000?
+
+ i) There is very little change in the time taken by sample_4() as the
+    dimensionality is increased from 2 to 1000?
+
+
+** Question 4
+
+Answers:
+
+ a) Replacing the O(D) loop at the end of sample_3() with an O(log(D))
+    binary search, as in sample_4() and sample_5(), changes the
+    complexity to O(D + log(D)), however O(D + log(D)) = O(D) so the
+    only change is in the constant of proportionality.
+
+ b) Computing the CDF values.
+
+ c) O((D + log(D)) * S) = O(D * S + S * log(D)) = O(D * S).
+
+ d) See hw1_answers.py.
+
+ d) O(D + S * log(D))
+
+ e) See hw_answers.py.
+
+
+** Question 5
+
+Answers:
+
+ a) See plot_by_num_samples.png.
+
+
+** Question 6
+
+Answers:
+
+ a) To avoid underflow.
+
+ b) If the elements of input 'x' are log probabilities, they should
+    not be exponentiated directly because of underflow. The ratio
+    exp(x[i]) / exp(x[j]) = exp(x[i] - x[j]) is not susceptible to
+    underflow, however. For any scalar 'm', log(sum(exp(x))) =
+    log(sum(exp(x) * exp(m) / exp(m))) = log(sum(exp(x - m) * exp(m))
+    = log(exp(m) * sum(exp(x - m))) = m + log(sum(exp(x - m))). If m
+    is some element of x, this expression involves only ratios of the
+    form exp(x[i]) / exp(x[j]) as desired. Setting m = max(x) reduces
+    underflow, while avoiding overflow: max(x) is shifted to zero,
+    while all other elements of x remain negative, but less so than
+    before. Even in the worst case scenario, where exp(x - max(x))
+    results in underflow for the other elements of x, max(x) will be
+    returned. Since sum(exp(x)) is dominated by exp(max(x)), max(x) is
+    a reasonable approximation to log(sum(exp(x))).
+
+ c) Work in log space by replacing uniform() with log(uniform()), '*'
+    with '+', sum() with log_sum_exp(), and 0 with log(0) = -inf.
+
+ d) See hw1_answers.py.
+
+ e) See hw1_answers.py.
+
+ f) See plot_by_dimension_log.png
+

@@ -1,0 +1,235 @@
+* Overview
+
+This homework is about working with the Dirichlet--multinomial unigram
+language model. The purpose of this homework is fivefold:
+
+ * To understand and implement the probabilistic generative process
+   for the Dirichlet--multinomial unigram language model.
+
+ * To appreciate the equivalence of the collapsed and uncollapsed
+   variants of the probabilistic generative process for the
+   Dirichlet--multinomial unigram language model.
+
+ * To learn how to work with text data, including tokenization,
+   representation of strings as integers, and removal of stopwords.
+
+ * To implement various methods for computing the evidence, the
+   posterior mean, and the predictive probability of new data.
+
+ * To appreciate the practical need to represent probabilities in log
+   space when working with large, real-world data sets.
+
+To complete this homework, you will need to use Python 2.7 [1], NumPy
+[2], and SciPy [3]. Although all three are installed on EdLab, I
+recommend you install them on your own computer. I also recommend you
+install and use IPython [4] instead of the default Python shell.
+
+Before answering the questions below, you should familiarize yourself
+with the code in hw3.py. In particular, you should try running
+sample(). For example, running 'sample(array([5, 2, 3]), 10)'
+generates 10 samples from the specified distribution as follows:
+
+>>> sample(array([5, 2, 3]), 10)
+array([0, 0, 2, 2, 1, 0, 0, 0, 2, 1])
+
+
+* Questions
+
+** Question 1
+
+Function sample() contains code for sampling from an unnormalized
+discrete distribution using the inverse transform method [5].
+
+ a) Implement the generative process for the Dirichlet--multinomial
+    unigram language model by filling in the missing code in
+    generate_corpus(). Hint: you will need to use sample() and
+    numpy.random.mtrand's dirichlet() function [6].
+
+According to the Dirichlet--multinomial unigram language model, the
+predictive probability of a single new token w_{N + 1} of type v
+(given tokens w_1 through w_N and assumptions H) is given by
+
+P(w_{N + 1} = v | w_1, ..., w_N, H) = (N_v + beta * n_v) / (N + beta),
+
+where N_v is the number of tokens in w_1, ..., w_N that are of type v.
+
+ b) It's possible to generate a corpus of tokens without explicitly
+    representing phi (the categorical distribution over word types) by
+    instead drawing each token w_n from P(w_n | w_1, ..., w_{n-1},
+    H). Implement this variant of generate_corpus() by filling in the
+    missing code in generate_corpus_collapsed().
+
+ c) Explain why this approach is equivalent to drawing phi from a
+    Dirichlet distribution and then drawing each token from phi.
+
+
+* Question 2
+
+When working with text data, word types are usually represented using
+integers rather than strings, i.e., 0 rather than 'foo'.
+
+ a) What is the reason for using this representation?
+
+Class Vocabulary (in vocabulary.py) implements a bijective mapping
+from strings to integers. You can run this code as follows:
+
+>>> tokens = ['foo', 'bar', 'baz']
+>>> vocab = Vocabulary()
+>>> [vocab[x] for x in tokens]
+[0, 1, 2]
+>>> vocab.lookup(1)
+'bar'
+
+(Note: you do not need to understand how this class is implemented.)
+
+Function tokenize() takes a string of text and an optional set of
+stopwords [7] as input and returns a list of lowercase tokens
+corresponding to the specified string, with any stopwords removed.
+
+ a) Implement code for preprocessing text data by filling in the
+    missing code in preprocess(). You can run your code as follows:
+
+>>> vocab, corpus = preprocess('ufos_small.csv', 'stopwordlist.txt')
+
+
+* Question 3
+
+According to the Dirichlet--multinomial unigram language model, the
+evidence for observed data D (consisting of N tokens, of which N_v are
+of type v) given assumptions H is given by
+
+P(D | H) = (Gamma(beta) * prod_{v=1}^V Gamma(N_v + beta * n_v)) /
+(Gamma(N + beta) * prod_{v=1}^V Gamma(beta * n_v))
+
+where beta and n are hyperparameters.
+
+ a) Implement code for computing the evidence by filling in the
+    missing code in evidence_1(). Hint: you will need to use
+    scipy.special's gamma() function [8].
+
+CSV file ufos_small.csv contains descriptions of 2 UFO sightings.
+
+ b) Run your code as follows to compute the evidence for the text data
+    in ufos_small.csv according to a Dirichlet--multinomial unigram
+    language model with concentration parameter equal to the
+    vocabulary size and a uniform base measure:
+
+>>> vocab, corpus = preprocess('ufos_small.csv', 'stopwordlist.txt')
+>>> V = len(vocab)
+>>> evidence_1(corpus, V, ones(V) / V)
+
+ c) The definition of P(w_{N + 1} = v | w_1, ..., w_N, H) given in
+    question 1, along with the recurrence Gamma(x + 1) = x * Gamma(x)
+    and the definition of the chain rule [9], can be used to write the
+    evidence without any gamma functions. Implement this variant of
+    evidence_1() by filling in the missing code in evidence_2(). You
+    should check that your code gives the same value as evidence_1().
+
+
+* Question 4
+
+CSV file ufos.csv contains descriptions of 61,067 UFO sightings.
+
+ a) Use evidence_1() and evidence_2() as follows to compute the
+    evidence for the text data in ufos.csv according to a
+    Dirichlet--multinomial unigram language model with concentration
+    parameter equal to the vocabulary size and a uniform base measure:
+
+>>> vocab, corpus = preprocess('ufos.csv', 'stopwordlist.txt')
+>>> V = len(vocab)
+>>> evidence_1(corpus, V, ones(V) / V)
+>>> evidence_2(corpus, V, ones(V) / V)
+
+ b) Explain the values you obtain.
+
+ c) It's possible to compute the log evidence by working directly in
+    log space. Implement this variant of evidence_1() by filling in
+    the missing code in log_evidence_1(). Your code should return the
+    log evidence, not the evidence. Hint: you will need to use
+    scipy.special's gammaln() function [10].
+
+ d) Fill in the missing code in log_evidence_2().
+
+ e) Use log_evidence_1() and log_evidence_2() as follows to compute
+    the log evidence for the text data in ufos.csv according to a
+    Dirichlet--multinomial unigram language model with concentration
+    parameter equal to the vocabulary size and a uniform base measure:
+
+>>> vocab, corpus = preprocess('ufos.csv', 'stopwordlist.txt')
+>>> V = len(vocab)
+>>> log_evidence_1(corpus, V, ones(V) / V)
+>>> log_evidence_2(corpus, V, ones(V) / V)
+
+
+* Question 5
+
+According to the Dirichlet--multinomial unigram language model, the
+mean of the posterior distribution over phi (the categorical
+distribution over word types) given observed data D and assumptions H
+is equal to the predictive distribution over word types for a single
+new token w_{N + 1} given observed data D and assumptions H.
+
+ a) Implement code for computing the mean of the posterior
+    distribution over phi by filling in the missing code in
+    posterior_mean(). Hint: you will need to use the definition of
+    P(w_{N + 1} = v | w_1, ..., w_N, H) given in question 1.
+
+Function print_top_types() contains code for printing the most
+probable word types according to the posterior distribution over phi.
+
+ b) Use print_top_types() to generate a list of the most probable word
+    types according to the posterior distribution over phi as follows:
+
+>>> vocab, corpus = preprocess('ufos.csv', 'stopwordlist.txt')
+>>> V = len(vocab)
+>>> print_top_types(vocab, corpus, V, ones(V) / V)
+
+ c) Will this list of most probable word types change if the
+    concentration parameter is changed, e.g., from V to 100?
+
+ d) Will this list of most probable word types change if the base
+    measure is changed, e.g., from uniform to non-uniform?
+
+
+* Question 6
+
+The predictive probability of new data D' given observed data D and
+assumptions H can be viewed as the evidence for D' given D and H.
+
+ a) Implement code for computing the log predictive probability by
+    filling in the missing code in log_predictive_prob(). Your code
+    should use posterior_mean() and log_evidence_1().
+
+ b) Use log_predictive_prob() to compute the log predictive
+    probability of the first half of the tokens in ufos.csv given the
+    second half according to a Dirichlet--multinomial unigram language
+    model with concentration parameter equal to the vocabulary size
+    and a uniform base measure as follows:
+
+>>> vocab, corpus = preprocess('ufos.csv', 'stopwordlist.txt')
+>>> V = len(vocab)
+>>> half = len(corpus) / 2
+>>> log_predictive_prob(corpus[:half], corpus[half:], V, ones(V) / V)
+
+
+* References
+
+[1] http://www.python.org/
+
+[2] http://numpy.scipy.org/
+
+[3] http://www.scipy.org/
+
+[4] http://ipython.org/
+
+[5] http://en.wikipedia.org/wiki/Inverse_transform_sampling
+
+[6] http://docs.scipy.org/doc/numpy/reference/generated/numpy.random.dirichlet.html
+
+[7] http://en.wikipedia.org/wiki/Stop_words
+
+[8] http://docs.scipy.org/doc/scipy/reference/generated/scipy.special.gamma.html
+
+[9] http://en.wikipedia.org/wiki/Chain_rule_%28probability%29
+
+[10] http://docs.scipy.org/doc/scipy/reference/generated/scipy.special.gammaln.html

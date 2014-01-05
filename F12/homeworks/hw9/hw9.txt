@@ -1,0 +1,143 @@
+* Overview
+
+This homework is about optimizing the parameters of the two Dirichlet
+priors used LDA. The purpose of this homework is as follows:
+
+ * To understand and implement Minka's fixed-point iteration [1].
+
+To complete this homework, you will need to use Python 2.7 [2], NumPy
+[3], and SciPy [4]. Although all three are installed on EdLab, I
+recommend you install them on your own computer. I also recommend you
+install and use IPython [5] instead of the default Python shell.
+
+Before answering the questions below, you should familiarize yourself
+with the code in hw8.py. In particular, you should try running
+sample(). For example, running 'sample(array([5, 2, 3]), 10)'
+generates 10 samples from the specified distribution as follows:
+
+>>> sample(array([5, 2, 3]), 10)
+array([0, 0, 2, 2, 1, 0, 0, 0, 2, 1])
+
+
+* Questions
+
+** Question 1
+
+CSV file questions.csv contains 5,264 questions about science from the
+Madsci Network question-and-answer website [6]. Each question is
+represented by a unique ID, and the text of the question itself.
+
+Function preprocess() (in preprocess.py) takes a CSV file, an optional
+stopword file, and an optional list of extra stopwords as input and
+returns a corpus (i.e., an instance of the Corpus class), with any
+stopwords removed. You can run this code as follows:
+
+>>> corpus = preprocess('questions.csv', 'stopwordlist.txt', ['answer', 'dont', 'find', 'im', 'information', 'ive', 'message', 'question', 'read', 'science', 'wondering'])
+>>> print 'V = %s' % len(corpus.vocab)
+V = 21919
+
+The resultant corpus may be split into a corpus of "training"
+documents and a corpus of "testing" documents as follows:
+
+>>> train_corpus = corpus[:-100]
+>>> print len(train_corpus)
+5164
+>>> test_corpus = corpus[-100:]
+>>> print len(test_corpus)
+100
+
+Class LDA (in hw9.py) implements latent Dirichlet allocation.
+
+ a) Implement code for jointly optimizing concentration parameter
+    alpha and base measure m (using Minka's fixed-point iteration) by
+    filling in the missing code in optimize_alpha_m(). Hint: you will
+    need to use scipy.special's psi() function [7], which implements
+    the digamma function. You can run your code as follows:
+
+>>> extra_stopwords = ['answer', 'dont', 'find', 'im', 'information', 'ive', 'message','question', 'read', 'science', 'wondering']
+>>> corpus = preprocess('questions.csv', 'stopwordlist.txt', extra_stopwords)
+>>> train_corpus = corpus[:-100]
+>>> assert train_corpus.vocab == corpus.vocab
+>>> test_corpus = corpus[-100:]
+>>> assert test_corpus.vocab == corpus.vocab
+>>> V = len(corpus.vocab)
+>>> T = 100
+>>> alpha = 0.1 * T
+>>> m = ones(T) / T
+>>> beta = 0.01 * V
+>>> n = ones(V) / V
+>>> lda = LDA(train_corpus, alpha, m, beta, n)
+>>> lda.gibbs(num_itns=250, optimize_alpha_m=True)
+
+ b) If the random number generator is initialized with a value of 1000
+    as follows, what is the optimized value of concentration parameter
+    alpha at the end of iteration 250?
+
+>>> lda.gibbs(num_itns=250, random_seed=1000, optimize_alpha_m=True)
+
+ c) Show that the equivalent fixed-point iteration for optimizing beta
+    only (i.e., n_v = 1 / V for a all v) is given by:
+
+beta = beta^{old} * (sum_{t=1}^T sum_{v=1}^V (Digamma(N_{v|t} +
+beta^{old} / V) - Digamma(beta^{old} / V))) / (V * sum_{t=1}^T
+(Digamma(N_t + beta^{old}) - Digamma(beta^{old})))
+
+    Hint: you will need to use the fact that log(1 / V) = -1 * log(V)
+    is a constant. You will also need to use the fact that the
+    derivative of -beta with respect to beta is -1 and the derivative
+    of log(beta) with respect to beta is 1 / beta.
+
+ d) Implement code for optimizing concentration parameter beta using
+    the fixed-point iteration given above by filling in the missing
+    code in optimize_beta(). Hint: you will need to use
+    scipy.special's psi() function [7], which implements the digamma
+    function. You can run your code as follows:
+
+>>> extra_stopwords = ['answer', 'dont', 'find', 'im', 'information', 'ive', 'message','question', 'read', 'science', 'wondering']
+>>> corpus = preprocess('questions.csv', 'stopwordlist.txt', extra_stopwords)
+>>> train_corpus = corpus[:-100]
+>>> assert train_corpus.vocab == corpus.vocab
+>>> test_corpus = corpus[-100:]
+>>> assert test_corpus.vocab == corpus.vocab
+>>> V = len(corpus.vocab)
+>>> T = 100
+>>> alpha = 0.1 * T
+>>> m = ones(T) / T
+>>> beta = 0.01 * V
+>>> n = ones(V) / V
+>>> lda = LDA(train_corpus, alpha, m, beta, n)
+>>> lda.gibbs(num_itns=250, optimize_alpha_m=True, optimize_beta=True)
+
+ e) If the random number generator is initialized with a value of 1000
+    and alpha, m, and beta are all optimized as follows, what are the
+    optimized values of concentration parameter alpha and
+    concentration parameter beta at the end of iteration 250?
+
+>>> lda.gibbs(num_itns=250, random_seed=1000, optimize_alpha_m=True,
+optimize_beta=True)
+
+ f) If the vocabulary contains word types that do not appear in the
+    "training" documents D (i.e., because they appear in the "testing"
+    documents D' only), what would happen if you were to attempt to
+    optimize base measure n along with concentration parameter beta?
+
+ g) Can this scenario be prevented by replacing all word types that
+    occur in D' but not D, along with the U least common word types in
+    D, with an additional "unseen" word type?
+
+
+* References
+
+[1] http://research.microsoft.com/en-us/um/people/minka/papers/dirichlet/minka-dirichlet.pdf
+
+[2] http://www.python.org/
+
+[3] http://numpy.scipy.org/
+
+[4] http://www.scipy.org/
+
+[5] http://ipython.org/
+
+[6] http://research.madsci.org/dataset/
+
+[7] http://docs.scipy.org/doc/scipy/reference/generated/scipy.special.psi.html

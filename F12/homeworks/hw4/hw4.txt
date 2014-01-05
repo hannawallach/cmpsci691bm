@@ -1,0 +1,321 @@
+* Overview
+
+This homework is about working with a mixture of
+Dirichlet--multinomial unigram language models for grouped
+documents. The purpose of this homework is threefold:
+
+ * To understand and implement the probabilistic generative process
+   for a mixture of Dirichlet--multinomial unigram language models.
+
+ * To understand various methods for computing the evidence, the
+   posterior mean, and the predictive probability of new data.
+
+ * To appreciate the kinds of information that may be obtained by
+   examining the most probable word types for each document group
+   according to the mean of the posterior distribution.
+
+To complete this homework, you will need to use Python 2.7 [1], NumPy
+[2], and SciPy [3]. Although all three are installed on EdLab, I
+recommend you install them on your own computer. I also recommend you
+install and use IPython [4] instead of the default Python shell.
+
+Before answering the questions below, you should familiarize yourself
+with the code in hw4.py. In particular, you should try running
+sample(). For example, running 'sample(array([5, 2, 3]), 10)'
+generates 10 samples from the specified distribution as follows:
+
+>>> sample(array([5, 2, 3]), 10)
+array([0, 0, 2, 2, 1, 0, 0, 0, 2, 1])
+
+
+* Questions
+
+** Question 1
+
+Class GroupedCorpus (in corpus.py) implements a grouped corpus, i.e.,
+a corpus in which each document is associated with exactly one of T
+groups. You can run this code as follows:
+
+>>> corpus = GroupedCorpus()
+>>> corpus.add('doc 1', 'group 1', ['foo', 'bar'])
+>>> corpus.add('doc 2', 'group 2', ['bar', 'baz', 'baz'])
+>>> corpus.add('doc 3', 'group 1', ['bar', 'foo'])
+>>> print len(corpus)
+3
+>>> print sum(len(doc) for doc, t in corpus)
+7
+>>> print len(corpus.vocab)
+3
+>>> print len(corpus.group_vocab)
+2
+>>> for doc, t in corpus:
+...     print doc.w
+...
+[0, 1]
+[1, 2, 2]
+[1, 0]
+>>> for doc, t in corpus:
+...     print '%s: %s' % (doc.name, doc.plaintext())
+...
+doc 1: foo bar
+doc 2: bar baz baz
+doc 3: bar foo
+
+>>> corpus = GroupedCorpus()
+>>> corpus.add(str(0), str(1), [str(x) for x in [5, 1, 1, 3]])
+>>> corpus.add(str(1), str(0), [str(x) for x in [2, 4]])
+>>> print len(corpus)
+2
+>>> print sum(len(doc) for doc, t in corpus)
+6
+>>> print len(corpus.vocab)
+5
+>>> print len(corpus.group_vocab)
+2
+>>> for doc, t in corpus:
+...     print doc.w
+...
+[0, 1, 1, 2]
+[3, 4]
+>>> for doc, t in corpus:
+...     print '%s: %s' % (doc.name, doc.plaintext())
+...
+0: 5 1 1 3
+1: 2 4
+
+(Note: although you do not need to understand how this class is
+implemented, you may find it helpful to do so.)
+
+Function sample() contains code for sampling from an unnormalized
+discrete distribution using the inverse transform method [5].
+
+ a) Implement the generative process for the Dirichlet--multinomial
+    mixture model by filling in the missing code in
+    generate_corpus(). Hint: you will need to use GroupedCorpus and
+    sample() and numpy.random.mtrand's dirichlet() function [6].
+
+
+* Question 2
+
+CSV file ufos.csv contains descriptions of 61,067 UFO sightings. Each
+sighting is represented by a unique ID, the state in which the
+sighting occurred, the shape of the sighted UFO, and a description.
+
+Function preprocess() takes a CSV file, an optional stopword file, and
+an optional field number as input and returns a grouped corpus, with
+any stopwords removed. Each document's group is determined by the
+contents of the field corresponding to the specified the field
+number. If no field number is specified, then all documents are
+assumed to belong to a single group. You can run this code as follows:
+
+>>> corpus = preprocess('ufos.csv', 'stopwordlist.txt')
+>>> print 'V = %s' % len(corpus.vocab)
+V = 100456
+>>> print 'T = %s' % len(corpus.group_vocab)
+T = 1
+
+>>> corpus = preprocess('ufos.csv', 'stopwordlist.txt', 1)
+>>> print 'V = %s' % len(corpus.vocab)
+V = 100456
+>>> print 'T = %s' % len(corpus.group_vocab)
+T = 52
+>>> print corpus.group_vocab.plaintext()
+0   IA
+1   WI
+2   WA
+3   MO
+4   ND
+[...]
+
+>>> corpus = preprocess('ufos.csv', 'stopwordlist.txt', 2)
+>>> print 'V = %s' % len(corpus.vocab)
+V = 100456
+>>> print 'T = %s' % len(corpus.group_vocab)
+T = 30
+>>> print corpus.group_vocab.plaintext()
+0   missing
+1   cone
+2   light
+3   triangle
+4   fireball
+[...]
+
+According to a mixture of Dirichlet--multinomial unigram language
+models, the evidence for observed data w_1 through w_N and z_1 through
+z_D given assumptions H is given by:
+
+P(w_1, ..., w_N, z_1, ..., z_D | H) = (prod_{t=1}^T ((Gamma(beta) *
+prod_{v=1}^V Gamma(N_{v|t} + beta * n_v)) / (Gamma(N_t + beta) *
+prod_{v=1}^V Gamma(beta * n_v)))) * ((Gamma(alpha) * prod_{t=1}^T
+Gamma(D_t + alpha * m_t)) / (Gamma(D + alpha) * prod_{t=1}^T
+Gamma(alpha * m_t))),
+
+where D_t is the number of documents belonging to group t, N_t is the
+number of tokens in documents belonging to group t, of which N_{v|t}
+are of type v, and alpha, m, beta, and n are hyperparameters.
+
+ a) Implement code for computing the log evidence by filling in the
+    missing code in log_evidence_1(). Hint: you will need to use
+    scipy.special's gammaln() function [7].
+
+ b) Use log_evidence_1() as follows to compute the log evidence for
+    the data in ufos.csv according to a mixture of
+    Dirichlet--multinomial unigram language models (with uniform base
+    measures and concentration parameters equal to the vocabulary size
+    and the number of groups) with only a single group:
+
+>>> corpus = preprocess('ufos.csv', 'stopwordlist.txt')
+>>> V = len(corpus.vocab)
+>>> T = len(corpus.group_vocab)
+>>> log_evidence_1(corpus, T, ones(T) / T, V, ones(V) / V)
+
+ c) Does your code give the same value as log_evidence_1() from last
+    week's homework? Explain your answer.
+
+According to a mixture of Dirichlet--multinomial unigram language
+models, the predictive probability of a single new token w_{N + 1} of
+type v in a new document belonging to group t (given observed data w_1
+through w_N and z_1 through z_D and assumptions H) is given by
+
+P(w_{N + 1} = v, z_{D + 1} = t | w_1, ..., w_N, z_1, ..., z_D, H) =
+(N_v + beta * n_v) / (N + beta) * (D_t + alpha * m_t) / (D + alpha),
+
+where alpha, m, beta, and n are hyperparameters.
+
+ d) What is the predictive probability of a single new token w_{N + 1}
+    of type v in an EXISTING document belonging to group t?
+
+ e) Use your answer, along with the definition of P(w_{N + 1} = v,
+    z_{D + 1} = t | w_1, ..., w_N, z_1, ..., z_D, H), the recurrence
+    Gamma(x + 1) = x * Gamma(x), and the definition of the chain rule
+    [8], to show how the evidence for observed data w_1 through w_N
+    and z_1 through z_D given assumptions H (as defined above) can
+    also be written without any gamma functions.
+
+ f) Implement this variant of log_evidence_1() by filling in the
+    missing code in log_evidence_2(). You should check that your code
+    gives the same value as log_evidence_1().
+
+Function time_taken() computes the time taken to compute the specified
+function, averaged over the specified number of repetitions.
+
+ g) Use time_taken() to compute the run times of log_evidence_1() and
+    log_evidence_2(), averaged over 10 repetitions, for the data in
+    ufos.csv with document groups determined by the UFOs' shapes:
+
+>>> corpus = preprocess('ufos.csv', 'stopwordlist.txt', 2)
+>>> V = len(corpus.vocab)
+>>> T = len(corpus.group_vocab)
+>>> alpha = T
+>>> m = ones(T) / T
+>>> beta = V
+>>> n = ones(V) / V
+>>> print time_taken(log_evidence_1, corpus, alpha, m, beta, n, 10)
+>>> print time_taken(log_evidence_2, corpus, alpha, m, beta, n, 10)
+
+ h) Which function is faster? Will this algorithm always be faster
+    than the other one, regardless of the programming language?
+
+
+* Question 3
+
+According to a mixture of Dirichlet--multinomial unigram language
+models, the evidence for observed tokens w_1 through w_N given z_1
+through z_D and assumptions H is given by:
+
+P(w_1, ..., w_N | z_1, ..., z_D, H) = prod_{t=1}^T ((Gamma(beta) *
+prod_{v=1}^V Gamma(N_{v|t} + beta * n_v)) / (Gamma(N_t + beta) *
+prod_{v=1}^V Gamma(beta * n_v))).
+
+ a) Implement code for computing the log evidence for observed tokens
+    w_1 through w_N given z_1 through z_D and assumptions H by filling
+    in the missing code in log_evidence_tokens_1().
+
+ b) Run your code to compute the log evidence for the text data in
+    ufos.csv given document groups determined by the UFOs' shapes and
+    given document groups determined by the sighting locations:
+
+>>> corpus = preprocess('ufos.csv', 'stopwordlist.txt', 2)
+>>> V = len(corpus.vocab)
+>>> log_evidence_tokens_1(corpus, V, ones(V) / V)
+>>> corpus = preprocess('ufos.csv', 'stopwordlist.txt', 1)
+>>> V = len(corpus.vocab)
+>>> log_evidence_tokens_1(corpus, V, ones(V) / V)
+
+ c) Use your answer to explain which set of document groups results in
+    a better model of the text and why this might be the case.
+
+
+* Question 4
+
+Function posterior_mean() returns the mean of the posterior
+distribution over phi_1 through phi_T (the categorical distributions
+over word types corresponding to document groups 1 through T) and
+theta (the categorical distribution over document groups).
+
+ a) Implement code for computing the mean of the posterior
+    distribution over phi_1 through phi_T by filling in the missing
+    code in posterior_mean_phis(). Hint: you will need to use your
+    definition of P(w_{N + 1} = v | w_1, ..., w_N, z_1, ..., z_D, H),
+    where d_{N + 1} = 1, 2, ..., or D, from question 2d.
+
+ b) Implement code for computing the posterior distribution over theta
+    by filling in the missing code in posterior_mean_theta().
+
+Function print_top_types() contains code for printing the most
+probable word types for document groups 1 through T according to the
+posterior distribution over phi_1 through phi_T.
+
+ b) Use print_top_types() to generate lists of the most probable word
+    types according to the posterior distribution over phi_1 through
+    phi_T for document groups corresponding to the UFOs' shapes:
+
+>>> corpus = preprocess('ufos.csv', 'stopwordlist.txt', 2)
+>>> V = len(corpus.vocab)
+>>> print_top_types(corpus, V, ones(V) / V)
+
+Almost all of these lists contain the words 'light', 'lights',
+'object', 'objects', and 'sky'. In the context of UFO sightings, these
+words can therefore be treated as uninformative stopwords.
+
+ c) Create a new stopword list (new_stopwordlist.txt) by appending
+    these words to the list of words in stopwordlist.txt and
+    regenerate your lists of the most probable word types:
+
+>>> corpus = preprocess('ufos.csv', 'new_stopwordlist.txt', 2)
+>>> V = len(corpus.vocab)
+>>> print_top_types(corpus, V, ones(V) / V)
+
+ d) Do these lists look more useful/informative? Why?
+
+ e) Use print_top_types() to generate lists of the most probable word
+    types according to the posterior distribution over phi_1 through
+    phi_T for document groups corresponding to the sighting locations:
+
+>>> corpus = preprocess('ufos.csv', 'new_stopwordlist.txt', 1)
+>>> V = len(corpus.vocab)
+>>> print_top_types(corpus, V, ones(V) / V)
+
+ f) Do these lists look more useful/informative than those obtained
+    for document groups corresponding to the UFOs' shapes? Why?
+
+ g) How does your answer relate to your answer to question 3c?
+
+
+* References
+
+[1] http://www.python.org/
+
+[2] http://numpy.scipy.org/
+
+[3] http://www.scipy.org/
+
+[4] http://ipython.org/
+
+[5] http://en.wikipedia.org/wiki/Inverse_transform_sampling
+
+[6] http://docs.scipy.org/doc/numpy/reference/generated/numpy.random.dirichlet.html
+
+[7] http://docs.scipy.org/doc/scipy/reference/generated/scipy.special.gammaln.html
+
+[8] http://en.wikipedia.org/wiki/Chain_rule_%28probability%29

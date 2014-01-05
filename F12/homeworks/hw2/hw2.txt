@@ -1,0 +1,149 @@
+* Overview
+
+This homework is about working with the beta--binomial unigram
+language model. The purpose of this homework is threefold:
+
+ * To understand some of the properties of the gamma function,
+   including its role in the beta--binomial unigram language model.
+
+ * To explore the effects of the parameters (i.e., the concentration
+   parameter and mean) of the beta distribution.
+
+ * To understand and implement the probabilistic generative process
+   for the beta--binomial unigram language model.
+
+To complete this homework, you will need to use Python 2.7 [1], NumPy
+[2], and SciPy [3]. Although all three are installed on EdLab, I
+recommend you install them on your own computer. I also recommend you
+install and use IPython [4] instead of the default Python shell.
+
+Before answering the questions below, you should familiarize yourself
+with the code in hw2.py. In particular, you should try running
+sample(). For example, running 'sample(array([5, 2, 3]), 10)'
+generates 10 samples from the specified distribution as follows:
+
+>>> sample(array([5, 2, 3]), 10)
+array([0, 0, 2, 2, 1, 0, 0, 0, 2, 1])
+
+
+* Questions
+
+** Question 1
+
+The gamma function, which plays an important role in the normalization
+constant of the beta distribution, is defined as follows:
+
+Gamma(x) = int_0^inf du e^{-u} * u^{x - 1}.
+
+ a) Show that Gamma(1) = 1.
+
+ b) Use integration by parts to show that Gamma(x + 1) = x * Gamma(x).
+
+The normalization constant for the beta distribution involves the
+following integral, known as the beta function:
+
+B(x, y) = int_0^1 dt t^{x - 1} * (1 - t)^{y - 1}.
+
+ c) Show that B(x, y) = Gamma(x) * Gamma(y) / Gamma(x + y). Hint: you
+    should start with Gamma(x) = int_0^inf du e^{-u} * u^{x - 1} and
+    Gamma(y) = int_0^inf dv e^{-v} * v^{y - 1}. Hint: you will need to
+    use the change of variable u = zt and v = z * (1 - t).
+
+
+** Question 2
+
+The PDF for the beta distribution is defined as follows:
+
+Beta(x | beta, n_1) = (Gamma(beta) / (Gamma(beta * n_1) * Gamma(beta *
+(1 - n_1)))) * x^{beta * n_1 - 1} * (1 - x)^{beta * (1 - n_1) - 1}
+
+  a) Implement the PDF for the beta distribution by filling in the
+     missing code in beta_pdf(). Hint: you will need to use
+     scipy.special's gamma() function [5].
+
+Function plot_beta_priors() takes two arguments: a list of
+concentration parameters and a list of means. For each pair in the
+cartesian product of these lists, plot_beta_priors() plots the PDF for
+the beta distribution parameterized by those values.
+
+  b) Use plot_beta_priors() to generate a plot of the PDFs for all
+     beta distributions with concentration parameters 0.1, 1, 2, 10,
+     and 100 and means 0.05, 0.25, 0.5, 0.75, and 0.95.
+
+  c) Describe the effect on the PDF for the beta distribution of
+     increasing the concentration parameter from 0.1 to 100.
+
+
+** Question 3
+
+Function sample() contains code for sampling from an unnormalized
+discrete distribution using the inverse transform method [6].
+
+ a) Implement the generative process for the beta--binomial unigram
+    language model by filling in the missing code in
+    generate_corpus(). Hint: you will need to use sample() and
+    numpy.random's beta() function [7]. You should pay special
+    attention to the parameterization of the beta distribution used in
+    beta() as it differs from the parameterization used in class.
+
+
+** Question 4
+
+According to the beta--binomial unigram language model, the predictive
+probability of a single new token w_{N + 1} of type 'no' (given
+observed data D and assumptions H) is given by
+
+P(w_{N + 1} = no | D, H) = (N_1 + beta * n_1) / (N + beta),
+
+where N is the number of tokens in D, of which N_1 are of type 'no'.
+
+  a) If D contains few observations (i.e., N is small), which term
+     will dominate the predictive probability?
+
+  b) What will the predictive probability tend toward as N increases?
+
+  c) Why can beta and beta * n_1 be interpreted as "pseudocounts" [8]?
+
+
+** Question 5
+
+According to the beta--binomial unigram language model, the evidence
+for observed data D (consisting of N tokens, of which N_1 are of type
+'no' and N - N_1 are of type 'yes') given assumptions H is given by
+
+P(D | H) = (Gamma(beta) * Gamma(N_1 + beta * n_1) * Gamma(N - N_1 +
+beta * (1 - n_1))) / (Gamma(N + beta) * Gamma(beta * n_1) *
+Gamma(beta * (1 - n_1)),
+
+where beta and n_1 are hyperparameters.
+
+ a) Use this definition, along with the definition of P(w_{N+1} = no |
+    D, H) given in question 4, the recurrence Gamma(x + 1) = x *
+    Gamma(x), and the definition of the chain rule [9] to show how P(D
+    | H), the evidence for observed data D given assumptions H, can
+    also be written without any gamma functions.
+
+ b) Explain how the predictive probability of new data D' given
+    observed data D and assumptions H can be computed incrementally,
+    without any gamma functions, as each new token in D' is observed.
+
+
+* References
+
+[1] http://www.python.org/
+
+[2] http://numpy.scipy.org/
+
+[3] http://www.scipy.org/
+
+[4] http://ipython.org/
+
+[5] http://docs.scipy.org/doc/scipy/reference/generated/scipy.special.gamma.html#scipy.special.gamma
+
+[6] http://en.wikipedia.org/wiki/Inverse_transform_sampling
+
+[7] http://docs.scipy.org/doc/numpy/reference/generated/numpy.random.beta.html#numpy.random.beta
+
+[8] http://en.wikipedia.org/wiki/Pseudocount
+
+[9] http://en.wikipedia.org/wiki/Chain_rule_%28probability%29

@@ -1,0 +1,94 @@
+* Overview
+
+This homework is about using bivariate slice sampling to infer values
+for the concentration parameters of the two Dirichlet priors used
+LDA. The purpose of this homework is as follows:
+
+ * To understand and implement bivariate slice sampling.
+
+To complete this homework, you will need to use Python 2.7 [1], NumPy
+[2], and SciPy [3]. Although all three are installed on EdLab, I
+recommend you install them on your own computer. I also recommend you
+install and use IPython [4] instead of the default Python shell.
+
+Before answering the questions below, you should familiarize yourself
+with the code in hw8.py. In particular, you should try running
+sample(). For example, running 'sample(array([5, 2, 3]), 10)'
+generates 10 samples from the specified distribution as follows:
+
+>>> sample(array([5, 2, 3]), 10)
+array([0, 0, 2, 2, 1, 0, 0, 0, 2, 1])
+
+
+* Questions
+
+** Question 1
+
+CSV file questions.csv contains 5,264 questions about science from the
+Madsci Network question-and-answer website [5]. Each question is
+represented by a unique ID, and the text of the question itself.
+
+Function preprocess() (in preprocess.py) takes a CSV file, an optional
+stopword file, and an optional list of extra stopwords as input and
+returns a corpus (i.e., an instance of the Corpus class), with any
+stopwords removed. You can run this code as follows:
+
+>>> corpus = preprocess('questions.csv', 'stopwordlist.txt', ['answer', 'dont', 'find', 'im', 'information', 'ive', 'message', 'question', 'read', 'science', 'wondering'])
+>>> print 'V = %s' % len(corpus.vocab)
+V = 21919
+
+The resultant corpus may be split into a corpus of "training"
+documents and a corpus of "testing" documents as follows:
+
+>>> train_corpus = corpus[:-100]
+>>> print len(train_corpus)
+5164
+>>> test_corpus = corpus[-100:]
+>>> print len(test_corpus)
+100
+
+Class LDA (in hw8.py) implements latent Dirichlet allocation.
+
+ a) Implement code for slice sampling [6] concentration parameters
+    alpha and beta, i.e., drawing alpha and beta from P(alpha, beta |
+    w_1, ..., w_N, z_1, ..., z_N, H), by filling in the missing code
+    in slice_sample(). Hint: you should work in log space, i.e., all
+    probabilities should be represented in log space, and you should
+    use log_evidence_corpus_and_z() to compute log P(w_1, ..., w_N,
+    z_1, ..., z_N | alpha, beta). You can run your code as follows:
+
+>>> extra_stopwords = ['answer', 'dont', 'find', 'im', 'information', 'ive', 'message','question', 'read', 'science', 'wondering']
+>>> corpus = preprocess('questions.csv', 'stopwordlist.txt', extra_stopwords)
+>>> train_corpus = corpus[:-100]
+>>> assert train_corpus.vocab == corpus.vocab
+>>> test_corpus = corpus[-100:]
+>>> assert test_corpus.vocab == corpus.vocab
+>>> V = len(corpus.vocab)
+>>> T = 100
+>>> alpha = 0.1 * T
+>>> m = ones(T) / T
+>>> beta = 0.01 * V
+>>> n = ones(V) / V
+>>> lda = LDA(train_corpus, alpha, m, beta, n)
+>>> lda.gibbs(num_itns=250)
+
+ b) If the random number generator is initialized with a value of 1000
+    as follows, what are the sampled values of concentration
+    parameters alpha and beta at the end of iteration 250?
+
+>>> lda.gibbs(num_itns=250, random_seed=1000)
+
+
+* References
+
+[1] http://www.python.org/
+
+[2] http://numpy.scipy.org/
+
+[3] http://www.scipy.org/
+
+[4] http://ipython.org/
+
+[5] http://research.madsci.org/dataset/
+
+[6] http://www.cs.toronto.edu/~radford/ftp/slc-samp.pdf

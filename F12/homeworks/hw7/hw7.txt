@@ -1,0 +1,295 @@
+* Overview
+
+This homework is about working with latent Dirichlet allocation (LDA)
+in order to infer token--topic (i.e., token--component)
+assignments. The purpose of this homework is threefold:
+
+ * To understand and implement Gibbs sampling for LDA
+
+ * To appreciate the effects and implications of "label switching".
+
+ * To understand and implement an approximate method for computing the
+   log predictive probability of new data according to LDA.
+
+To complete this homework, you will need to use Python 2.7 [1], NumPy
+[2], and SciPy [3]. Although all three are installed on EdLab, I
+recommend you install them on your own computer. I also recommend you
+install and use IPython [4] instead of the default Python shell.
+
+Before answering the questions below, you should familiarize yourself
+with the code in hw7.py. In particular, you should try running
+sample(). For example, running 'sample(array([5, 2, 3]), 10)'
+generates 10 samples from the specified distribution as follows:
+
+>>> sample(array([5, 2, 3]), 10)
+array([0, 0, 2, 2, 1, 0, 0, 0, 2, 1])
+
+
+* Questions
+
+** Question 1
+
+Class Corpus (in corpus.py) implements a corpus of (ungrouped)
+documents. This class supports slicing as follows:
+
+>>> corpus = Corpus()
+>>> corpus.add('doc 1', ['foo', 'bar'])
+>>> corpus.add('doc 2', ['bar', 'foo'])
+>>> corpus.add('doc 3', ['bar', 'baz', 'baz'])
+>>> print len(corpus)
+3
+>>> print len(corpus.vocab)
+3
+>>> print len(corpus[:2])
+2
+>>> print len(corpus[:2].vocab)
+3
+>>> for doc in corpus[:2]:
+...     print doc.w
+...
+[0, 1]
+[1, 0]
+>>> print corpus[2].w
+[1, 2, 2]
+
+(Note: although you do not need to understand how this class is
+implemented, you may find it helpful to do so.)
+
+CSV file questions.csv contains 5,264 questions about science from the
+Madsci Network question-and-answer website [?]. Each question is
+represented by a unique ID, and the text of the question itself.
+
+Function preprocess() (in preprocess.py) takes a CSV file, an optional
+stopword file, and an optional list of extra stopwords as input and
+returns a corpus (i.e., an instance of the Corpus class, as described
+above), with any stopwords removed. You can run this code as follows:
+
+>>> corpus = preprocess('questions.csv', 'stopwordlist.txt', ['answer', 'dont', 'find', 'im', 'information', 'ive', 'message', 'question', 'read', 'science', 'wondering'])
+>>> print 'V = %s' % len(corpus.vocab)
+V = 21919
+
+The resultant corpus may be split into a corpus of "training"
+documents and a corpus of "testing" documents as follows:
+
+>>> train_corpus = corpus[:-100]
+>>> print len(train_corpus)
+5164
+>>> test_corpus = corpus[-100:]
+>>> print len(test_corpus)
+100
+
+These corpora have the same vocabulary:
+
+>>> train_corpus.vocab == test_corpus.vocab
+True
+
+Class LDA (in hw7.py) implements latent Dirichlet allocation.
+
+ a) Implement code for performing a single Gibbs sampling iteration,
+    i.e., drawing a single set of token--topic assignments z_1 through
+    z_N from P(z_1, ..., z_N | w_1, ..., w_N, H), by filling in the
+    missing code in gibbs_iteration(). Hint: there is no need to work
+    in log space, i.e., you should use sample() rather than
+    log_sample(). You can run your code as follows:
+
+>>> extra_stopwords = ['answer', 'dont', 'find', 'im', 'information', 'ive', 'message','question', 'read', 'science', 'wondering']
+>>> corpus = preprocess('questions.csv', 'stopwordlist.txt', extra_stopwords)
+>>> train_corpus = corpus[:-100]
+>>> assert train_corpus.vocab == corpus.vocab
+>>> test_corpus = corpus[-100:]
+>>> assert test_corpus.vocab == corpus.vocab
+>>> V = len(corpus.vocab)
+>>> T = 100
+>>> alpha = 0.1 * T
+>>> m = ones(T) / T
+>>> beta = 0.01 * V
+>>> n = ones(V) / V
+>>> lda = LDA(train_corpus, alpha, m, beta, n)
+>>> lda.gibbs(num_itns=250)
+
+ b) If the random number generator is initialized with a value of 1000
+    as follows, what is the log evidence for tokens w_1 through w_N
+    and token--topic (i.e., token--component) assignments z_1 through
+    z_N given assumptions H at the end of iteration 250?
+
+>>> lda.gibbs(num_itns=250, random_seed=1000)
+
+
+* Question 2
+
+According to LDA, the mean of the posterior distribution over phi_t
+(the categorical distribution over word types corresponding to topic
+t) given the observed data w_1 through w_N and assumptions H, i.e.,
+the mean of P(phi_t | w_1, ..., w_N, H), is given by
+
+E[phi_t] = int_{phi_t} dphi_t phi_t * P(phi_t | w_1, ..., w_N, H),
+
+where P(phi_t | w_1, ..., w_N, H) = sum_{z_1, ..., z_N} P(phi_t | w_1,
+..., w_N, z_1, ..., z_N, H) * P(z_1, ..., z_N | w_1, ..., w_N, H)
+
+ a) Can this value be computed analytically?
+
+ b) Function posterior_mean_phis() approximates the mean of the
+    posterior distribution over phi_t by the mean of the posterior
+    distribution over phi_t given a single set of token--topic (i.e.,
+    token--component) assignments z_1^{(s)} through z_N^{(s)} drawn
+    from P(z_1, ..., z_N | w_1, ..., w_N, H), i.e., the mean of
+    P(phi_t | w_1, ..., w_N, z_1^{(s)}, ..., z_N^{(s)}). Can you
+    obtain a better approximation by averaging P(phi_t | w_1, ...,
+    w_N, z_1^{(s)}, ..., z_N^{(s)}) over MULTIPLE samples from P(z_1,
+    ..., z_N | w_1, ..., w_N, H), obtained from DIFFERENT runs of your
+    code, or will you encounter the label switching problem?
+
+
+* Question 3
+
+According to LDA, the predictive probability of a single new token
+w_{N + 1} of type v belonging to a NEW document (given observed tokens
+w_1 through w_N and assumptions H) may be approximated by:
+
+P(w_{N + 1} = v | w_1, ..., w_N) = (1 / S) * sum_{s=1}^S sum_{t=1}^T
+(N_{v|t}^{(s)} + beta * n_v) / (N_t^{(s)} + beta) * m_t
+
+where m, beta, and n are hyperparameters, and superscript "{(s)}"
+indicates that the superscripted quantity is that obtained using a
+single set of token--topic assignments z_1^{(s)} through z_N^{(s)}
+drawn from P(z_1, ..., z_N | w_1, ..., w_N, H).
+
+ a) Explain why this approximate predictive probability does not
+    involve any document-specific counts or alpha.
+
+ b) Explain why it's possible to compute this approximate predictive
+    probability as stated above, i.e., by averaging over multiple
+    samples from P(z_1, ..., z_N | w_1, ..., w_N, H), without
+    encountering the label switching problem.
+
+ b) What is the corresponding approximate predictive probability of a
+    single new token w_{N + 1} of type v in an EXISTING document?
+
+ c) Is it possible to compute this approximate predictive probability
+    without encountering the label switching problem? Why?
+
+ d) What is the corresponding approximate predictive probability of a
+    single new token w_{N + 1} of type v for which z_{N + 1} = t?
+
+ e) Is it possible to compute this approximate predictive probability
+    without encountering the label switching problem? Why?
+
+
+** Question 4
+
+According to LDA, the predictive probability of new tokens w'_1
+through w'_{N'} belonging to D' new documents given observed tokens
+w_1 through w_N and assumptions H can be approximated as follows:
+
+P(w'_1, ..., w'_{N'} | w_1, ..., w_N, H) ~= (1 / S) * sum_{s=1}^S
+P(w'_1, ..., w'_{N'} | w_1, ..., w_N, z_1^{(s)}, ..., z_N^{(s)}, H)
+
+where z_1^{(s)} through z_N^{(s)} comprise a single set of
+token--topic (i.e., token--component) assignments drawn from P(z_1,
+..., z_N | w_1, ..., w_N, H). This approximation involves an
+intractable sum over token--topic assignments z'_1 through z'_{N'},
+thereby necessitating the following approximation:
+
+P(w'_1, ..., w'_{N'} | w_1, ..., w_N, z_1^{(s)}, ..., z_N^{(s)}, H) ~=
+prod_{n=1}^{N'} (1 / R) sum_{r=1}^R sum_{t=1}^T P(w'_n, z'_n = t |
+w'_1, ..., w'_{n - 1}, z'_1^{(r)}, ..., z'_{n - 1}^{(r)}, w_1, ...,
+w_N, z_1^{(s)}, ..., z_N^{(s)}, H),
+
+where z'_1^{(r)} through z'_{n - 1}^{(r)} comprise a single set of
+token--topic (i.e., token--component) assignments drawn from P(z'_1,
+..., z'_{n - 1} | w'_1, ..., w'_{n - 1}, w_1, ..., w_N, z_1^{(s)},
+..., z_D^{(s)}, H). Lastly, if token w'_n is of type v, then
+
+P(w'_n, z'_n = t | w'_1, ..., w'_{n - 1}, z'_1^{(r)}, ..., z'_{n -
+1}^{(r)}, w_1, ..., w_N, z_1^{(s)}, ..., z_N^{(s)}, H) =
+(({N'_{v|t}^{<n}}^{(r)} + N_{v|t}^{(s)} + beta * n_v) /
+(N'_t^{<n}}^{(r)} + N_t^{(s)} + beta)) * (({N'_{t|d'_n}^{<n}}^{(r)} +
+alpha * m_t) / (N'_{d'_n}^{<n} + alpha))
+
+where {N'_t^{<n}}^{(r)} is the total number of tokens in w'_1, ...,
+w'_{n - 1} that are assigned to topic t by token--topic assignments
+z'_1^{(r)} through z'_{n - 1}^{(r)}, of which N'_{v|t}^{<n}}^{(r)} are
+of type v; N_t^{(s)} is the total number of tokens in w_1 through w_N
+that are assigned to topic t by token--topic assignments z_1^{(s)}
+through z_N^{(s)}, of which N_{v|t}^{(s)} are of type v;
+N'_{d'_n}^{<n} is the total number of tokens in w'_1, ..., w'_{n - 1}
+that belong to the same document (i.e., 1 <= d'_n <= D') as token
+w'_n, of which {N'_{t|d'_n}^{<n}}^{(r)} are assigned to topic t by
+token--topic assignments z'_1^{(r)} through z'_{n - 1}^{(r)}.
+
+ a) Implement code for computing the log predictive probability (using
+    the approximation described above) by filling in the missing code
+    in log_predictive_prob(). For simplicity, your code should use
+    only a single set of token--topic assignments (i.e., S = 1) drawn
+    from P(z_1, ..., z_N | w_1, ..., w_N, H). Specifically, your code
+    should use the sample most recently drawn using Gibbs
+    sampling. You can run your code as follows:
+
+>>> extra_stopwords = ['answer', 'dont', 'find', 'im', 'information', 'ive', 'message','question', 'read', 'science', 'wondering']
+>>> corpus = preprocess('questions.csv', 'stopwordlist.txt', extra_stopwords)
+>>> train_corpus = corpus[:-100]
+>>> assert train_corpus.vocab == corpus.vocab
+>>> test_corpus = corpus[-100:]
+>>> assert test_corpus.vocab == corpus.vocab
+>>> V = len(corpus.vocab)
+>>> T = 10
+>>> alpha = 0.1 * T
+>>> m = ones(T) / T
+>>> beta = 0.01 * V
+>>> n = ones(V) / V
+>>> lda = LDA(train_corpus, alpha, m, beta, n)
+>>> lda.gibbs(num_itns=250, random_seed=1000)
+>>> print lda.log_predictive_prob(test_corpus, num_samples=5)
+
+    When testing your code, may find it useful to save your model as
+    follows after performing Gibbs sampling:
+
+>>> lda.gibbs(num_itns=250, random_seed=1000)
+>>> lda.save('model.dat')
+
+    You can then use your saved model as follows:
+
+>>> lda = LDA.load('model.dat')
+>>> print lda.log_predictive_prob(test_corpus, num_samples=5)
+
+ b) What is the approximate log predictive probability, computed as
+    described above, i.e., using R = 5 random samples after
+    initializing the random number generator with a value of 1000 and
+    performing 25 Gibbs sampling iterations?
+
+
+** Question 5
+
+CSV file ufos.csv contains descriptions of 5,000 UFO sightings. Each
+sighting is represented by a unique ID, the state in which the
+sighting occurred, the shape of the sighted UFO, and a description.
+
+ a) Run your Gibbs sampling code as follows to produce lists of the
+    most probable word types according to the approximate posterior
+    distribution over phi_1 through phi_100 after 250 Gibbs sampling
+    iterations. Examine these lists and, well, enjoy :-)
+
+>>> extra_stopwords = ['light', 'lights', 'object', 'objects', 'sky']
+>>> corpus = preprocess('ufos_small.csv', 'stopwordlist.txt', extra_stopwords)
+>>> V = len(corpus.vocab)
+>>> T = 100
+>>> alpha = 0.1 * T
+>>> m = ones(T) / T
+>>> beta = 0.01 * V
+>>> n = ones(V) / V
+>>> lda = LDA(corpus, alpha, m, beta, n)
+>>> lda.gibbs(num_itns=250)
+
+
+* References
+
+[1] http://www.python.org/
+
+[2] http://numpy.scipy.org/
+
+[3] http://www.scipy.org/
+
+[4] http://ipython.org/
+
+[5] http://research.madsci.org/dataset/

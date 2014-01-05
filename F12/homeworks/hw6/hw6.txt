@@ -1,0 +1,253 @@
+* Overview
+
+This homework is about working with a mixture of
+Dirichlet--multinomial unigram language models in order to infer
+document groups. The purpose of this homework is twofold:
+
+ * To appreciate the effects and implications of "label switching".
+
+ * To understand and implement an approximate method for computing the
+   log predictive probability of new data.
+
+To complete this homework, you will need to use Python 2.7 [1], NumPy
+[2], and SciPy [3]. Although all three are installed on EdLab, I
+recommend you install them on your own computer. I also recommend you
+install and use IPython [4] instead of the default Python shell.
+
+Before answering the questions below, you should familiarize yourself
+with the code in hw6.py. In particular, you should try running
+sample(). For example, running 'sample(array([5, 2, 3]), 10)'
+generates 10 samples from the specified distribution as follows:
+
+>>> sample(array([5, 2, 3]), 10)
+array([0, 0, 2, 2, 1, 0, 0, 0, 2, 1])
+
+
+* Questions
+
+** Question 1
+
+According to a mixture of Dirichlet--multinomial unigram language
+models, the predictive probability of a single new token w_{N + 1} of
+type v belonging to a new document (given observed tokens w_1 through
+w_N and assumptions H) may be approximated by:
+
+P(w_{N + 1} = v | w_1, ..., w_N) = (1 / S) * sum_{s=1}^S sum_{t=1}^T
+(N_{v|t}^{(s)} + beta * n_v) / (N_t^{(s)} + beta) * (D_t^{(s)} + alpha
+* m_t) / (D + alpha),
+
+where alpha, m, beta, and n are hyperparameters, and superscript
+"{(s)}" indicates that the superscripted quantity is that obtained
+using a single set of document--component assignments z_1^{(s)}
+through z_D^{(s)} drawn from P(z_1, ..., z_D | w_1, ..., w_N, H).
+
+ a) Explain why it's possible to compute this approximate predictive
+    probability as stated above, i.e., by averaging over multiple
+    samples from P(z_1, ..., z_D | w_1, ..., w_N, H), without
+    encountering the label switching problem.
+
+ b) What is the corresponding approximate predictive probability of a
+    single new token w_{N + 1} of type v in an EXISTING document?
+
+ c) Is it possible to compute this approximate predictive probability
+    without encountering the label switching problem? Why?
+
+
+** Question 2
+
+Class Corpus (in corpus.py) implements a corpus of (ungrouped)
+documents. This class supports slicing as follows:
+
+>>> corpus = Corpus()
+>>> corpus.add('doc 1', ['foo', 'bar'])
+>>> corpus.add('doc 2', ['bar', 'foo'])
+>>> corpus.add('doc 3', ['bar', 'baz', 'baz'])
+>>> print len(corpus)
+3
+>>> print len(corpus.vocab)
+3
+>>> print len(corpus[:2])
+2
+>>> print len(corpus[:2].vocab)
+3
+>>> for doc in corpus[:2]:
+...     print doc.w
+...
+[0, 1]
+[1, 0]
+>>> print corpus[2].w
+[1, 2, 2]
+
+CSV file questions.csv contains 5,264 questions about science from the
+Madsci Network question-and-answer website [5]. Each question is
+represented by a unique ID, and the text of the question itself.
+
+Function preprocess() (in preprocess.py) takes a CSV file, an optional
+stopword file, and an optional list of extra stopwords as input and
+returns a corpus (i.e., an instance of the Corpus class, as described
+above), with any stopwords removed. You can run this code as follows:
+
+>>> corpus = preprocess('questions.csv', 'stopwordlist.txt', ['answer', 'dont', 'find', 'im', 'information', 'ive', 'message', 'question', 'read', 'science', 'wondering'])
+>>> print 'V = %s' % len(corpus.vocab)
+V = 21919
+
+The resultant corpus may be split into a corpus of "training"
+documents and a corpus of "testing" documents as follows:
+
+>>> train_corpus = corpus[:-100]
+>>> print len(train_corpus)
+5164
+>>> test_corpus = corpus[-100:]
+>>> print len(test_corpus)
+100
+
+These corpora have the same vocabulary:
+
+>>> train_corpus.vocab == test_corpus.vocab
+True
+
+ a) When using a (mixture of) Dirichlet--multinomial unigram language
+    model(s) to compute the predictive probability of new data D'
+    given observed data D and assumptions H, the model must be defined
+    over the union of the individual vocabularies of D and D'. Why?
+
+For many real-world tasks, it's not possible to define a model over
+the union of the individual vocabularies of D and D' because the
+identity of D' is not known prior to forming the posterior
+distribution. In this scenario, it's common to define a model over the
+vocabulary of D plus one additional "unseen" word type. All word types
+that occur in D' but not D are replaced with this "unseen" word type.
+
+ b) The least common of the word types that occur in D only are also
+    replaced with the "unseen" word type. If this step is omitted,
+    what role do the type--topic counts, i.e., N_{v|t} and N_t, play
+    in the predictive probability of a single new token w_{N + 1} of
+    the "unseen" word type in either a new or an existing document?
+
+If the U least common word types in D are replaced with the "unseen"
+word type, the predictive probability of a single new token w_{N + 1}
+in a new document assigned to component t (given observed tokens w_1
+through w_N and assumptions H) is given by
+
+P(w_{N + 1} = "unseen" | z_{D + 1} = t, w_1, ..., w_N, H) = (1 / U)
+sum_{z_1, ..., z_D} (N_{"unseen"|t} + beta * n_{"unseen"}) / (N_t +
+beta) * P(z_1, ..., z_D | w_1, ..., w_N, H),
+
+where beta and n are hyperparameters and N_t is the number of tokens
+in documents assigned to group t by z_1 through z_D, of which
+N_{"unseen"|t} are of the "unseen" word type.
+
+ c) Explain the presence of the factor (1 / U).
+
+
+** Question 3
+
+According to a mixture of Dirichlet--multinomial unigram language
+models, the predictive probability of new tokens w_{N + 1} through
+w_{N + N'} belonging to D' new documents given observed tokens w_1
+through w_N and assumptions H can be approximated as follows:
+
+P(w_{N + 1}, ..., w_{N + N'} | w_1, ..., w_N, H) ~= (1 / S) *
+sum_{s=1}^S P(w_{N + 1}, ..., w_{N + N'} | w_1, ..., w_N, z_1^{(s)},
+..., z_D^{(s)}, H)
+
+where z_1^{(s)} through z_D^{(s)} comprise a single set of
+document--component assignments drawn from P(z_1, ..., z_D | w_1, ...,
+w_N, H). This approximation involves an intractable sum over
+document--component assignments z'_1 through z'_{D'}, thereby
+necessitating the following approximation:
+
+P(w_{N + 1}, ..., w_{N + N'} | w_1, ..., w_N, z_1^{(s)}, ...,
+z_D^{(s)}, H) ~= prod_{d=1}^{D'} (1 / R) sum_{r=1}^R sum_{t=1}^T
+P(D'_d, z'_d = t | D'_{<d}, z'_1^{(r)}, ..., z'_{d - 1}^{(r)}, w_1,
+..., w_N, z_1^{(s)}, ..., z_D^{(s)}, H),
+
+where D'_d denotes only those tokens in w_{N + 1} through w_{N + N'}
+belonging to new document d, D'_{<d} denotes only those tokens in w_{N
++ 1} through w_{N + N'} belonging to new documents 1 through d - 1,
+and z'_1^{(r)} through z'_{d - 1}^{(r)} comprise a single set of
+document--component assignments drawn from P(z'_1, ..., z'_{d - 1} |
+D'_{<d}, w_1, ..., w_N, z_1^{(s)}, ..., z_D^{(s)}, H). Lastly,
+
+P(D'_d, z'_d = t | z'_1^{(r)}, ..., z'_{d - 1}^{(r)}, D, Z^{(s)}, H) =
+Gamma({N'_t^{<d}}^{(r)} + N_t^{(s)} + beta) / (prod_{v=1}^V
+Gamma({N'_{v|t}^{<d}}^{(r)} + N_{v|t}^{(s)} + beta * n_v)) *
+(prod_{v=1}^V Gamma(N'_{v|d} + {N'_{v|t}^{<d}}^{(r)} + N_{v|t}^{(s)} +
+beta * n_v)) / Gamma(N'_d + {N'_t^{<d}}^{(r)} + N_t^{(s)} + beta) *
+({D'_t^{<d}}^{(r)} + D_t^{(s)} + alpha * m_t) / (d - 1 + D + alpha),
+
+where {N'_t^{<d}}^{(r)} is the total number of tokens in D'_{<d} that
+are assigned to component t by document--component assignments
+z'_1^{(r)} through z'_{d - 1}^{(r)}, of which N'_{v|t}^{<d}}^{(r)} are
+of type v; N_t^{(s)} is the total number of tokens in w_1 through w_N
+that are assigned to component t by document--component assignments
+z_1^{(s)} through z_D^{(s)}, of which N_{v|t}^{(s)} are of type v;
+N'_d is the total number of tokens in new document d, of which
+N'_{v|d} are of type v; {D'_t^{<d}}^{(r)} is the number of documents
+in D'_{<d} that are assigned to component t by document--component
+assignments z'_1^{(r)} through z'_{d - 1}^{(r)}; and D_t is the number
+of documents assigned to component t by document--component
+assignments z_1^{(s)} through z_D^{(s)}.
+
+Class MixtureModel (in hw6.py) implements a mixture of
+Dirichlet--multinomial unigram language models.
+
+ a) Implement code for computing the log predictive probability (using
+    the approximation described above) by filling in the missing code
+    in log_predictive_prob(). For simplicity, your code should use
+    only a single set of document--component assignments (i.e., S = 1)
+    drawn from P(z_1, ..., z_D | w_1, ..., w_N, H). Specifically, your
+    code should use the sample most recently drawn using Gibbs
+    sampling. You can run your code as follows:
+
+>>> extra_stopwords = ['answer', 'dont', 'find', 'im', 'information', 'ive', 'message','question', 'read', 'science', 'wondering']
+>>> corpus = preprocess('questions.csv', 'stopwordlist.txt', extra_stopwords)
+>>> train_corpus = corpus[:-100]
+>>> assert train_corpus.vocab == corpus.vocab
+>>> test_corpus = corpus[-100:]
+>>> assert test_corpus.vocab == corpus.vocab
+>>> V = len(corpus.vocab)
+>>> T = 10
+>>> alpha = 0.1 * T
+>>> m = ones(T) / T
+>>> beta = 0.01 * V
+>>> n = ones(V) / V
+>>> mm = MixtureModel(train_corpus, alpha, m, beta, n)
+>>> mm.gibbs(num_itns=25, random_seed=1000)
+>>> mm.log_predictive_prob(test_corpus, num_samples=5)
+
+    When testing your code, may find it useful to save your model as
+    follows after performing Gibbs sampling:
+
+>>> mm.gibbs(num_itns=25, random_seed=1000)
+>>> mm.save('model.dat')
+
+    You can then use your saved model as follows:
+
+>>> mm = MixtureModel.load('model.dat')
+>>> mm.log_predictive_prob(test_corpus, num_samples=5)
+
+ b) What is the approximate log predictive probability, computed as
+    described above, i.e., using R = 5 random samples after
+    initializing the random number generator with a value of 1000 and
+    performing 25 Gibbs sampling iterations?
+
+ c) What is the time complexity of log_predictive_prob()?
+
+ d) It's possible to improve the time complexity (at the expense of
+    accuracy) by replacing the loop over all previous documents with a
+    loop over a fixed number (e.g., 25) of the most recent
+    documents. What is the time complexity of this variant?
+
+
+* References
+
+[1] http://www.python.org/
+
+[2] http://numpy.scipy.org/
+
+[3] http://www.scipy.org/
+
+[4] http://ipython.org/
+
+[5] http://research.madsci.org/dataset/

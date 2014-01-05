@@ -1,0 +1,224 @@
+* Overview
+
+This homework is about drawing samples from an unnormalized discrete
+distribution. The purpose of this homework is fourfold:
+
+ * To appreciate that the fastest method will depend on factors
+   including the library functions available, the dimensionality of
+   the distribution, and the number of samples to be drawn.
+
+ * To implement and compare the run time of several different methods
+   for sampling from an unnormalized discrete distribution.
+
+ * To understand some of the fundamentals needed to test random code,
+   including initializing the random number generator with a fixed
+   seed and averaging results over multiple random inputs.
+
+ * To learn how to work with probabilities represented in log
+   space---a common (and sometimes crucial) trick used in the
+   implementation of many machine learning algorithms.
+
+To complete this homework, you will need to use Python 2.7 [1] and
+NumPy [2]. Although they are both installed on EdLab, I recommend you
+install them on your own computer. I also recommend you install and
+use IPython [3] instead of the default Python shell.
+
+Before answering the questions below, you should familiarize yourself
+with the code in hw1.py. (Note: you do not need to look at
+iterview.py; this file contains code for displaying a text-based
+progress bar.) In particular, you should try running get_dists() and
+sample_1(). For example, running 'get_dists(2, 3)' generates 3
+distributions of dimensionality 2 as follows:
+
+>>> get_dists(2, 3)
+array([[ 0.22935327,  0.77064673],
+       [ 0.41723034,  0.58276966],
+       [ 0.95174593,  0.04825407]])
+
+
+* Questions
+
+** Question 1
+
+Suppose you have a "black box" function (i.e., you do not have access
+to the source code) that takes an unnormalized discrete distribution
+as input and returns a sample drawn from that distribution.
+
+ a) How can you check that samples returned by the function are
+    correctly drawn from the distribution specified as input?
+
+ b) Implement your method by filling in the missing code in
+    check(). Your code should throw an AssertionError if the samples
+    returned by the function are not drawn from the distribution
+    specified as input. You can run your code as follows:
+
+>>> check(sample_1, ones(10) / 10)
+
+>>> check(sample_1, array([5.75, 3, 1.25]))
+
+>>> for dist in get_dists(5, 25):
+...     check(sample_1, dist)
+
+
+** Question 2
+
+Function sample_1() contains code for sampling from an unnormalized
+discrete distribution using the inverse transform method [4]. The CDF
+values are computed incrementally as needed (see variable 'acc').
+
+ a) It's possible to eliminate the need to store CDF values (i.e., the
+    variable 'acc') by instead incrementally subtracting the current
+    unnormalized probability from variable 'r'. Implement this variant
+    by filling in the missing code in sample_2(). You should check
+    that your code is correct using your check() function.
+
+ b) It's also possible to precompute all CDF values using numpy's
+    cumsum() function [5]. Implement this variant of sample_1() by
+    filling in the missing code in sample_3(). Again, you should check
+    that your code is correct using your check() function.
+
+ c) The loop at the end of sample_3() finds the first CDF value that
+    is above 'r' and returns the corresponding value from the domain
+    of the distribution; equivalently, the loop finds where to insert
+    'r' in the (sorted) list CDF values. The loop can therefore be
+    replaced with a binary search, e.g., by using bisect's
+    bisect_right() function [6] or numpy's searchsorted() function
+    [7]. Implement these variants of sample_3() by filling in the
+    missing code in sample_4() and sample_5() respectively.
+
+ d) Finally, it's also possible to take an entirely different approach
+    and use numpy.random's multinomial() function [8]. Implement this
+    method by filling in the missing code in sample_6(). Hint: you
+    will also need to use numpy's argmax() function [9].
+
+
+** Question 3
+
+Function plot_by_dimension() takes two arguments: a list of functions
+and a list of dimensionalities. (You should ignore keyword argument
+'log_space' for now.) For each of the specified functions,
+plot_by_dimension() plots the time taken to draw one sample, averaged
+over 100 randomly generated distributions and 50 repetitions per
+distribution, versus distribution dimensionality.
+
+ a) Function time_taken() seeds the random number generator with a
+    fixed value before timing the specified function. Why?
+
+ b) Why is it important to average run time over multiple repetitions?
+
+ c) Use plot_by_dimension() to generate a plot of the times taken by
+    sample_1() through sample_6() inclusive as a function of
+    dimensionalities 2, 5, 10, 20, 50, 100, 200, 500, and 1000.
+
+ d) Is sample_1() faster than sample_2() or vice versa? By how much?
+
+ e) Is sample_1() faster than sample_3() or vice versa? By how much?
+
+ f) Is sample_3() faster than sample_4() or vice versa? By how much?
+
+ g) Is sample_3() faster than sample_5() or vice versa? By how much?
+
+ h) Is there a big change in the time taken by sample_4() as the
+    dimensionality is increased from 2 to 1000?
+
+ i) Is there a big change in the time taken by sample_5() as the
+    dimensionality is increased from 2 to 1000?
+
+
+** Question 4
+
+Function sample_3() has time complexity O(D + D) = O(D), where D is
+the dimensionality of the input distribution [10].
+
+ a) What is the time complexity of sample_5()?
+
+ b) Which operation dominates the time complexity of sample_5()?
+
+The biggest benefit of using a binary search, i.e., bisect_right() or
+searchsorted(), occurs when drawing multiple samples from the same
+distribution. Function sample_7() draws multiple samples from the same
+distribution by repeatedly executing the code from sample_5().
+
+ c) What is the time complexity of sample_7() in terms of D, the
+    dimensionality of the distribution, and S, the number of samples?
+
+ d) It's possible to compute the CDF values and generate all uniform
+    random variates before calling searchsorted(). Implement this
+    variant by filling in the missing code in sample_8().
+
+ d) What is the time complexity of sample_8()?
+
+ e) It's also possible to replace the loop at the end of sample_8(),
+    i.e., repeated calls to searchsorted(), with a single call to
+    searchsorted(), as described in the documentation [7]. Although
+    this does not change the time complexity, it does improve the
+    constant of proportionality and hence the run time. Implement this
+    variant by filling in the missing code in sample_9().
+
+
+** Question 5
+
+Function plot_by_num_samples() takes two arguments: a list of
+functions and a list of numbers of samples. For each of the specified
+functions, plot_by_num_samples() plots the time taken to draw multiple
+samples, averaged over 100 randomly generated distributions and 50
+repetitions per distribution, versus the number of samples drawn.
+
+ a) Use plot_by_num_samples() to generate a plot of the times taken by
+    sample_7() through sample_9() inclusive as a function of 2, 5, 10,
+    20, 50, 100, 200, 500, and 1000 samples.
+
+
+** Question 6
+
+Normalized distributions that contain very small probabilities and
+unnormalized distributions that contain very small values are often
+represented in log space, i.e., log(x) rather than x.
+
+ a) What is the reason for using this representation?
+
+ b) Function log_sum_exp() takes an unnormalized distribution
+    represented in log space, e.g., x, as input and returns
+    log(sum(exp(x))). Explain the trick implemented in this function.
+
+ c) Suppose you have an unnormalized discrete distribution represented
+    in log space. How can you modify the inverse transform method
+    implemented in sample_1() to draw a sample from this distribution
+    without directly exponentiating the log probabilities?
+
+ d) Implement your method by filling in the missing code in
+    log_sample_1(). Hint: you will need to use log_sum_exp().
+
+ e) It's also possible to use the trick implemented in log_sum_exp()
+    to transform an unnormalized distribution represented in log space
+    such that it can be exponentiated directly and used as input to
+    one of sample_1() through sample_5(). Implement this method, using
+    sample_5(), by filling in the missing code in log_sample_5().
+
+ f) Use plot_by_dimension() with keyword argument 'log_space' set to
+    the value 'True' to generate a plot of the times taken by
+    log_space_1() and log_space_5() as a function of dimensionalities
+    2, 5, 10, 20, 50, 100, 200, 500, and 1000.
+
+
+* References
+
+[1] http://www.python.org/
+
+[2] http://numpy.scipy.org/
+
+[3] http://ipython.org/
+
+[4] http://en.wikipedia.org/wiki/Inverse_transform_sampling
+
+[5] http://docs.scipy.org/doc/numpy/reference/generated/numpy.cumsum.html
+
+[6] http://docs.python.org/library/bisect.html
+
+[7] http://docs.scipy.org/doc/numpy/reference/generated/numpy.searchsorted.html
+
+[8] http://docs.scipy.org/doc/numpy/reference/generated/numpy.random.multinomial.html
+
+[9] http://docs.scipy.org/doc/numpy/reference/generated/numpy.argmax.html
+
+[10] http://en.wikipedia.org/wiki/Time_complexity
