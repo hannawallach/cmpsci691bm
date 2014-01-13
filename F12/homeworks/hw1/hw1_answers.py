@@ -48,9 +48,11 @@ def check(func, dist):
     dist -- (unnormalized) distribution to pass to func
     """
 
+    num_samples = 100000
+
     empirical = zeros(len(dist))
 
-    for n in iterview(xrange(100000)):
+    for n in iterview(xrange(num_samples)):
         empirical[func(dist)] += 1
 
     empirical /= num_samples
@@ -171,6 +173,7 @@ def plot_by_dimension(functions, dimensions, log_space=False):
     ylabel('Average time to draw one sample')
 
     show()
+
 
 def sample_7(dist, num_samples=1):
 
